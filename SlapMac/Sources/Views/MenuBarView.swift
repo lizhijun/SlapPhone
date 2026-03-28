@@ -3,6 +3,8 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var settingsVM: SettingsViewModel
     @EnvironmentObject var slapDetectorVM: SlapDetectorViewModel
+    @EnvironmentObject var soundPackManager: SoundPackManager
+    var importWindowController: SoundPackImportWindowController?
     @State private var showSettings = false
     @State private var showSoundPacks = false
     @State private var showAbout = false
@@ -71,6 +73,10 @@ struct MenuBarView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
 
+            Toggle("Screen Flash", isOn: $settingsVM.screenFlashEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
             // Sensitivity
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
@@ -107,13 +113,46 @@ struct MenuBarView: View {
                     .font(.caption)
                 Spacer()
                 Picker("", selection: $settingsVM.selectedSoundPackId) {
-                    ForEach(SoundPack.allPacks) { pack in
+                    ForEach(soundPackManager.allPacks) { pack in
                         Text(pack.name).tag(pack.id)
                     }
                 }
                 .labelsHidden()
                 .fixedSize()
             }
+
+            // Sound selection
+            HStack {
+                Text("Sound")
+                    .font(.caption)
+                Spacer()
+                Picker("", selection: $settingsVM.selectedSoundId) {
+                    ForEach(currentPackSounds) { sound in
+                        Text(sound.fileName).tag(sound.id)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+
+            HStack(spacing: 8) {
+                Button("Import Pack...") {
+                    importWindowController?.showWindow()
+                }
+
+                if !soundPackManager.customPacks.isEmpty {
+                    let selectedIsCustom = soundPackManager.customPacks.contains(where: { $0.id == settingsVM.selectedSoundPackId })
+                    if selectedIsCustom {
+                        Button("Delete Pack") {
+                            try? soundPackManager.deletePack(id: settingsVM.selectedSoundPackId)
+                            settingsVM.selectedSoundPackId = SoundPack.slapMacPack.id
+                        }
+                        .foregroundStyle(.red)
+                    }
+                }
+            }
+            .font(.caption)
+            .buttonStyle(.plain)
 
             Divider()
 
@@ -137,6 +176,11 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 260)
+    }
+
+    private var currentPackSounds: [SoundFile] {
+        let pack = soundPackManager.allPacks.first { $0.id == settingsVM.selectedSoundPackId }
+        return pack?.sounds ?? []
     }
 
     private var sensitivityLabel: String {

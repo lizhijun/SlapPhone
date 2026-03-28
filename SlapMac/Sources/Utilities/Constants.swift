@@ -18,4 +18,14 @@ enum Constants {
 
     // System sound paths
     static let systemSoundsPath = "/System/Library/Sounds"
+
+    // Screen flash
+    static let flashMaxAlpha: CGFloat = 0.6
+    static let flashDuration: Double = 0.15
+
+    // Custom sound packs
+    static let appSupportDir = "SlapMac"
+    static let soundPacksDir = "SoundPacks"
+    static let packMetadataFile = "pack.json"
+    static let supportedAudioExtensions = ["mp3", "wav", "aiff", "m4a", "aac", "caf"]
 }

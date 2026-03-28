@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settingsVM: SettingsViewModel
+    @EnvironmentObject var soundPackManager: SoundPackManager
 
     var body: some View {
         Form {
@@ -29,7 +30,7 @@ struct SettingsView: View {
 
             Section("Sound") {
                 Picker("Sound Pack", selection: $settingsVM.selectedSoundPackId) {
-                    ForEach(SoundPack.allPacks) { pack in
+                    ForEach(soundPackManager.allPacks) { pack in
                         VStack(alignment: .leading) {
                             Text(pack.name)
                             Text(pack.description)
@@ -43,6 +44,7 @@ struct SettingsView: View {
 
             Section("Features") {
                 Toggle("USB Moaner", isOn: $settingsVM.usbMoanerEnabled)
+                Toggle("Screen Flash", isOn: $settingsVM.screenFlashEnabled)
                 Toggle("Launch at Login", isOn: Binding(
                     get: { settingsVM.launchAtLogin },
                     set: { settingsVM.launchAtLogin = $0 }

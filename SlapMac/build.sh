@@ -20,6 +20,18 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 # Copy executable
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
+# Copy app icon
+if [ -f "$PROJECT_DIR/Resources/AppIcon.icns" ]; then
+    cp "$PROJECT_DIR/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+    echo "App icon copied."
+fi
+
+# Copy bundled sound pack
+if [ -d "$PROJECT_DIR/soundpack" ]; then
+    cp "$PROJECT_DIR/soundpack/"* "$APP_BUNDLE/Contents/Resources/"
+    echo "Sound pack copied ($(ls "$PROJECT_DIR/soundpack/" | wc -l | tr -d ' ') files)."
+fi
+
 # Create Info.plist
 cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,6 +56,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
     <string>14.6</string>
     <key>LSUIElement</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSApplicationCategoryType</key>

@@ -8,12 +8,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let slapDetectorVM = SlapDetectorViewModel()
     let audioService = AudioService()
     let usbMonitor = USBMonitorService()
+    let screenFlash = ScreenFlashService()
+    let soundPackManager = SoundPackManager()
+    lazy var importWindowController = SoundPackImportWindowController(packManager: soundPackManager)
 
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Load sound pack
-        audioService.loadSoundPack(settingsVM.selectedSoundPack)
+        // Wire audio service to sound pack manager
+        audioService.soundPackManager = soundPackManager
+
+        // Resolve selected pack from manager (supports custom packs)
+        let initialPack = soundPackManager.allPacks.first { $0.id == settingsVM.selectedSoundPackId } ?? .systemPack
+        audioService.loadSoundPack(initialPack)
 
         // Start slap detection
         if slapDetectorVM.sensorAvailable {
@@ -23,27 +30,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
-        // Slap events -> play audio + increment counter
+        // Slap events -> play selected sound + increment counter + flash
         slapDetectorVM.slapPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 guard let self else { return }
-                self.audioService.play(intensity: event.intensity)
+                self.audioService.playSound(id: self.settingsVM.selectedSoundId, intensity: event.intensity)
                 self.settingsVM.incrementSlapCount()
+                if self.settingsVM.screenFlashEnabled {
+                    self.screenFlash.flash(intensity: event.intensity)
+                }
             }
             .store(in: &cancellables)
 
-        // USB events -> play audio (if enabled)
+        // USB events -> play selected sound (if enabled)
         usbMonitor.start()
         usbMonitor.eventPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 guard let self, self.settingsVM.usbMoanerEnabled else { return }
-                self.audioService.playRandom()
+                self.audioService.playSound(id: self.settingsVM.selectedSoundId, intensity: Float.random(in: 0.5...1.0))
             }
             .store(in: &cancellables)
 
-        // Settings changes -> update detection params
+        // Settings changes -> update detection params and sound pack
         settingsVM.objectWillChange
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -52,14 +62,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     sensitivity: self.settingsVM.sensitivity,
                     cooldown: self.settingsVM.cooldownSeconds
                 )
-                let newPack = self.settingsVM.selectedSoundPack
+                let newPack = self.soundPackManager.allPacks.first { $0.id == self.settingsVM.selectedSoundPackId } ?? .slapMacPack
                 if self.audioService.currentPack?.id != newPack.id {
                     self.audioService.loadSoundPack(newPack)
+                    // Auto-select first sound if current selection not in new pack
+                    if !newPack.sounds.contains(where: { $0.id == self.settingsVM.selectedSoundId }) {
+                        self.settingsVM.selectedSoundId = newPack.sounds.first?.id ?? ""
+                    }
                 }
             }
             .store(in: &cancellables)
 
-        print("[SlapMac] App launched successfully")
+        // Reload audio when custom packs change (import/delete)
+        soundPackManager.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // If current pack was deleted, fall back to system
+                let packExists = self.soundPackManager.allPacks.contains { $0.id == self.settingsVM.selectedSoundPackId }
+                if !packExists {
+                    self.settingsVM.selectedSoundPackId = SoundPack.systemPack.id
+                    self.audioService.loadSoundPack(.systemPack)
+                }
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -69,9 +95,10 @@ struct SlapMacApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarView()
+            MenuBarView(importWindowController: appDelegate.importWindowController)
                 .environmentObject(appDelegate.settingsVM)
                 .environmentObject(appDelegate.slapDetectorVM)
+                .environmentObject(appDelegate.soundPackManager)
         } label: {
             Label {
                 Text(Constants.appName)
@@ -84,6 +111,7 @@ struct SlapMacApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appDelegate.settingsVM)
+                .environmentObject(appDelegate.soundPackManager)
         }
     }
 }
