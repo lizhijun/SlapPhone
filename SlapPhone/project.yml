@@ -1,0 +1,75 @@
+name: SlapPhone
+options:
+  bundleIdPrefix: com.slapphone
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+
+settings:
+  SWIFT_VERSION: "5.9"
+
+packages:
+  SlapPhoneCore:
+    path: ../SlapPhoneCore
+
+targets:
+  SlapPhone:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    bundleId: com.slapphone.app
+    sources:
+      - path: SlapPhone
+        excludes:
+          - Resources/Sounds
+          - Assets.xcassets
+    resources:
+      - path: SlapPhone/Resources/Sounds
+      - path: SlapPhone/Assets.xcassets
+      - path: SlapPhone/Info.plist
+      - path: SlapPhone/PrivacyInfo.xcprivacy
+    frameworks:
+      - CoreMotion
+      - AVFoundation
+      - WatchConnectivity
+      - UIKit
+    dependencies:
+      - package: SlapPhoneCore
+    info:
+      path: SlapPhone/Info.plist
+
+  "SlapPhoneWatch Watch App":
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    bundleId: com.slapphone.app.watchkitapp
+    sources:
+      - path: "SlapPhoneWatch Watch App"
+        excludes:
+          - Assets.xcassets
+    resources:
+      - path: "SlapPhoneWatch Watch App/Assets.xcassets"
+      - path: "SlapPhoneWatch Watch App/Info.plist"
+    frameworks:
+      - CoreMotion
+      - WatchConnectivity
+      - WatchKit
+    dependencies:
+      - package: SlapPhoneCore
+    info:
+      path: "SlapPhoneWatch Watch App/Info.plist"
+
+schemes:
+  SlapPhone:
+    build:
+      targets:
+        SlapPhone: all
+    run:
+      config: Debug
+
+  "SlapPhoneWatch Watch App":
+    build:
+      targets:
+        "SlapPhoneWatch Watch App": all
+    run:
+      config: Debug
